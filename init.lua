@@ -1,7 +1,10 @@
-proj = "project18a"
+proj = "project07"
+
+
+uart.setup(0,9600,8,0,1)
 
 -- full init =
---    1 init  
+--    1 init
 --    2 WIFI
 --    3 TIME
 
@@ -9,37 +12,40 @@ proj = "project18a"
 -- short init might skip WIFI/TIME
 
 -- following makes missing file into non-panic:
-local df=dofile 
-dofile=function(f) 
-    if file.exists(f) then 
-        df(f) 
-    else 
-        print("File ", f, "not exist ***\n") 
+print("Start")
+local df=dofile
+dofile=function(f)
+    if file.exists(f) then
+        df(f)
+    else
+        print("File ", f, "not exist ***\n")
         ff=file.open("missingfile", "w") ff:writeline(f) ff:close()
         node.restart()
-    end 
+    end
 end
-if file.open("missingfile", "r")  then 
+if file.open("missingfile", "r")  then
     f = file.readline() file.close() file.remove("missingfile")
     print("Please fix missing file", f)
     return -- terminate
 end
-if file.open("runonce", "r")  then 
+if file.open("runonce", "r")  then
     f = file.readline():gsub('\n','') file.close() file.remove("runonce")
     dofile(f)
-    node.restart() 
+    node.restart()
 end
 
 -- refer lib-DEEPSLEEP.lua to understand these numbers
 if rtcmem and rtcmem.read32(20) == 123654 then-- test if waking from deepsleep? (either timer or button)
-    rtcmem.write32(20,654321) 
+    rtcmem.write32(20,654321)
     -- if so, destroy that number against re-use, but leave its equivalent for our project to see
     local pass=rtcmem.read32(23)
     local starttype = rtcmem.read32(22)
-    if starttype == 1 and pass >0 then  
+    print("ASD")
+    print(starttype)
+    if starttype == 1 and pass >0 then
          node.task.post( function() dofile("init2-WIFI.lua") end ) -- faster than below
          return
-    elseif starttype == 2 or (starttype == 3 and pass >0) then 
+    elseif starttype == 2 or (starttype == 3 and pass >0) then
          node.task.post( function() dofile(proj..".lua") end ) -- skip pause, wifi & sntp
          return
     end
@@ -48,8 +54,8 @@ end
 
 -- below, doing regular delayed full start ...
 
-wifi.setmode(wifi.STATION) 
-print "Hold down button during blinking to abort..." 
+-- wifi.setmode(wifi.STATION)
+print "Hold down button during blinking to abort..."
 gpio.mode(4,gpio.OUTPUT)   -- the led on ESP12 submodule
 gpio.mode(3,gpio.INPUT)  -- make sure D3 button is working, & not left as an output since just before reset
 pwm.setup(4,12,950)   -- flash
@@ -83,14 +89,14 @@ print(rc[rawcode], ec[extcode+1])
 if extcode == 2 then print (node.bootreason()) end
 -- BUT DON'T BELIEVE IT RELIGIOUSLY !!
 
-function clone (t) 
+function clone (t)
 -- clones a romtable (or table) into ram. Member romtables or lightfunctions remain in rom
 -- eg   math=clone(math)
     local target = {}
     for k, v in pairs(t) do target[k] = v end
-    setmetatable(target, getmetatable(t)) 
+    setmetatable(target, getmetatable(t))
     target['parent'] = t
-    return target  
-end 
+    return target
+end
 
 -- v 0.8    18 sept 2017     starttype 2 for deepsleep
